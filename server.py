@@ -8,7 +8,7 @@ from time import sleep
 
 from database import crud, models, schemas
 from database.database import SessionLocal, engine
-from keras_visualizer import visualizer
+# from keras_visualizer import visualizer
 import tempfile
 import deep
 
