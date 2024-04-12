@@ -12,6 +12,51 @@ from database.database import SessionLocal, engine
 import tempfile
 import deep
 
+## DICOM
+from pydicom.dataset import Dataset
+from pydicom import datadict
+from pydicom.tag import Tag, BaseTag, TagType
+from pydicom.valuerep import (PersonName)
+from dicom import dcm
+
+def gen_dicom_filter():
+    ds = Dataset()
+    # ds.Modality = ""  # "DX"
+    ds.Modality = ""  # "DX"
+    # ds.ModalitiesInStudy = "DX"
+    ds.ModalitiesInStudy = ""
+    ds.AccessionNumber = ""
+    ds.StudyDate = "20240412-20240412"
+    ds.StudyTime = "170000-173000"
+    # ds.StudyTime = ""
+    ds.TimezoneOffsetFromUTC = ""
+    # ds.PatientID = ""  # "1795017"
+    ds.PatientID = ""
+    # ds.PatientPosition = "PA\\AP"
+    ds.PatientPosition = ""
+    ds.PatientName = ""
+    ds.PatientBirthDate = ""
+    ds.SeriesInstanceUID = ""
+    ds.StudyInstanceUID = ""
+    ds.StudyID = ""
+    # ds.StudyDescription = "TORAX"
+    ds.StudyDescription = ""
+    ds.FileSetID = ""
+    ds.ModalitiesInStudy = ""
+    ds.NumberOfStudyRelatedInstances = ""
+    ds.ReferringPhysicianName = ""
+    ds.QueryRetrieveLevel = "STUDY"
+    ds.ImageComments = ""
+    return ds
+
+network_parameters = {
+    "server_address": "localhost",
+    "server_port": 4242,
+    "server_ae_title": "ORTHANC",
+    "local_ae_title": "AIHEALTHMAC",
+}
+dicom_listener = dcm.init_server(ae_title="AIHEALTHMAC", listen_address="0.0.0.0", listen_port=11112)
+
 # browser ws clients
 clients = []
 
@@ -40,6 +85,63 @@ def get_db():
 @app.get("/", tags=["Info"])
 def info():
     return {"appname": "AIHEALTH", "version": "1.0"}
+
+def get_value_original_string(key, obj):
+    if key == "PatientName": # and "original_string" in obj:
+        if isinstance(obj, PersonName):
+            return f"{obj}"
+    return obj
+
+@app.get("/inputs/list", tags=["Inputs list"])
+def pacs_images():
+    ds = gen_dicom_filter()
+    if network_parameters is None:
+        raise "Error: network parameters"
+
+    client = dcm.init_client(
+        client_ae_title=network_parameters["local_ae_title"],
+        address=network_parameters["server_address"],
+        port=network_parameters["server_port"],
+        ae_title=network_parameters["server_ae_title"],
+    )
+    if client.is_established:
+        responses = client.send_c_find(ds, dcm.StudyRootQueryRetrieveInformationModelFind)
+        datasets = []
+        for status, dataset in responses:
+            # keys = [
+            #     "AccessionNumber",
+            #     "ImageComments",
+            #     "ModalitiesInStudy",
+            #     "Modality",
+            #     "NumberOfStudyRelatedInstances",
+            #     "PatientBirthDate",
+            #     "PatientID",
+            #     "PatientName",
+            #     "PatientPosition",
+            #     "QueryRetrieveLevel",
+            #     "ReferringPhysicianName",
+            #     "RetrieveAETitle",
+            #     "SeriesInstanceUID",
+            #     "SpecificCharacterSet",
+            #     "StudyDate",
+            #     "StudyDescription",
+            #     "StudyID",
+            #     "StudyInstanceUID",
+            #     "StudyTime",
+            #     "TimezoneOffsetFromUTC"]
+            # # if "PatientID" in dir(dataset):
+            if "PatientID" in dir(dataset):
+                obj = dataset.to_json_dict()
+                nobj = {z[4]: get_value_original_string(z[4], dataset[z[4]]._value) for z in [datadict.get_entry(Tag(k)) for k in obj.keys()]}
+                datasets.append(nobj)
+                # taginfo = datadict.get_entry(Tag("00204000"))
+                # key, desc = taginfo[4], taginfo[2]
+                # datasets.append({**{k: dataset[k]._value for k in keys}, "json": obj})
+            #     datasets.append({**{k: dataset[k]._value for k in keys}, "json": dataset.to_json_dict()})
+            # for k in dataset:
+            #     print(k)
+        return datasets
+    return []
 
 
 @app.post("/users/", response_model=schemas.User, tags=["Users"])
