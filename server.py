@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import os
 from fastapi import Depends, FastAPI, HTTPException, Response, WebSocket
 from sqlalchemy.orm import Session
@@ -14,6 +15,8 @@ from database.database import SessionLocal, engine
 import tempfile
 import deep
 
+from routes import nodes
+
 ## DICOM
 from pydicom.dataset import Dataset
 from pydicom import datadict
@@ -23,24 +26,29 @@ from dicom import dcm
 from datetime import datetime, timedelta
 
 
-def send():
-    print("SEND!")
+def fetch_node(node):
+    print(f"FETCH NODE... {node}")
 
+cron = CronManager(debug=True)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Initializing...")
+    cron.schedule("ORTHANC", fetch_node, sec=10)
+    cron.schedule("STATIX", fetch_node, sec=10)
+    yield
+    print("Finishing...")
+    cron.stop_all()
 
-def send2():
-    print("SEND2!")
-    print(datetime.now())
+app = FastAPI(lifespan=lifespan)
 
+async def startup_event_handler():
+    print("Backend STARTED")
 
-def send3():
-    print("SEND3! each second")
+async def shutdown_event_handler():
+    print("Backend FINISHED")
 
-
-cron_manager = CronManager()
-cron_manager.schedule_function("*/1 * * * *", send)
-cron_manager.schedule_function("*/1 * * * *", send2)
-cron_manager.schedule_function("* * * * * *", send3)
-# cron_manager.stop_all()
+app.add_event_handler("startup", startup_event_handler)
+app.add_event_handler("shutdown", shutdown_event_handler)
 
 
 def gen_dicom_filter(datestart, dateend):
@@ -93,12 +101,11 @@ compute_sockets = []
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
-
 compute_nodes = [
     {"server": "localhost:8098", "status": True},
     {"server": "localhost:8099", "status": True},
 ]
+
 
 
 # Dependency
@@ -109,6 +116,8 @@ def get_db():
     finally:
         db.close()
 
+
+nodes.routes(app, "/nodes", crud, models, schemas, get_db)
 
 @app.get("/", tags=["Info"])
 def info():
@@ -129,9 +138,10 @@ def get_value_original_string(key, obj):
     return obj
 
 
-@app.get("/schedules", tags=["Cron list"])
+@app.get("/fetchers", tags=["Cron list"])
 def schedules():
-    return cron_manager.list()
+    # cron.stop("STATIX")
+    return cron.list()
 
 
 @app.get("/inputs", tags=["Inputs list"])

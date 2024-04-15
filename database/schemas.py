@@ -40,3 +40,14 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+
+class NodeBase(BaseModel):
+    id: int
+    aetitle: str
+    address: str
+    port: int
+    fetch_interval: int
+
+class Node(NodeBase):
+    pass

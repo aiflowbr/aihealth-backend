@@ -30,8 +30,7 @@ class Nodes(Base):
     aetitle = Column(String, index=True)
     address = Column(String, index=True)
     port = Column(Integer, index=True)
-    # owner_id = Column(Integer, ForeignKey("users.id"))
-    # owner = relationship("User", back_populates="items")
+    fetch_interval = Column(Integer)
 
 
 class Settings(Base):
@@ -40,5 +39,16 @@ class Settings(Base):
     id = Column(Integer, primary_key=True)
     key = Column(String, index=True)
     value = Column(String, index=True)
+    # owner_id = Column(Integer, ForeignKey("users.id"))
+    # owner = relationship("User", back_populates="items")
+
+
+class Inputs(Base):
+    __tablename__ = "inputs"
+
+    id = Column(Integer, primary_key=True)
+    aetitle = Column(String, index=True)
+    address = Column(String, index=True)
+    port = Column(Integer, index=True)
     # owner_id = Column(Integer, ForeignKey("users.id"))
     # owner = relationship("User", back_populates="items")

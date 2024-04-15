@@ -53,3 +53,7 @@ def create_user_item(db: Session, audit: schemas.AuditCreate, user_id: int):
     db.commit()
     db.refresh(db_audit)
     return db_audit
+
+
+def get_nodes(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Nodes).offset(skip).limit(limit).all()
