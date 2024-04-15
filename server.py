@@ -5,9 +5,11 @@ import asyncio
 from queue import Queue
 import json
 from time import sleep
+from cron import CronManager
 
 from database import crud, models, schemas
 from database.database import SessionLocal, engine
+
 # from keras_visualizer import visualizer
 import tempfile
 import deep
@@ -16,18 +18,41 @@ import deep
 from pydicom.dataset import Dataset
 from pydicom import datadict
 from pydicom.tag import Tag, BaseTag, TagType
-from pydicom.valuerep import (PersonName)
+from pydicom.valuerep import PersonName
 from dicom import dcm
+from datetime import datetime, timedelta
 
-def gen_dicom_filter():
+
+def send():
+    print("SEND!")
+
+
+def send2():
+    print("SEND2!")
+    print(datetime.now())
+
+
+def send3():
+    print("SEND3! each second")
+
+
+cron_manager = CronManager()
+cron_manager.schedule_function("*/1 * * * *", send)
+cron_manager.schedule_function("*/1 * * * *", send2)
+cron_manager.schedule_function("* * * * * *", send3)
+# cron_manager.stop_all()
+
+
+def gen_dicom_filter(datestart, dateend):
     ds = Dataset()
     # ds.Modality = ""  # "DX"
     ds.Modality = ""  # "DX"
     # ds.ModalitiesInStudy = "DX"
     ds.ModalitiesInStudy = ""
     ds.AccessionNumber = ""
-    ds.StudyDate = "20240412-20240412"
-    ds.StudyTime = "170000-173000"
+    ds.StudyDate = f"{datestart.strftime('%Y%m%d')}-{dateend.strftime('%Y%m%d')}"
+    ds.StudyTime = f"{datestart.strftime('%H%M%S')}-{dateend.strftime('%H%M%S')}"  # "170000-173000"
+    print(f"Date: {ds.StudyDate}, Time: {ds.StudyTime}")
     # ds.StudyTime = ""
     ds.TimezoneOffsetFromUTC = ""
     # ds.PatientID = ""  # "1795017"
@@ -49,13 +74,16 @@ def gen_dicom_filter():
     ds.ImageComments = ""
     return ds
 
+
 network_parameters = {
     "server_address": "localhost",
     "server_port": 4242,
     "server_ae_title": "ORTHANC",
     "local_ae_title": "AIHEALTHMAC",
 }
-dicom_listener = dcm.init_server(ae_title="AIHEALTHMAC", listen_address="0.0.0.0", listen_port=11112)
+dicom_listener = dcm.init_server(
+    ae_title="AIHEALTHMAC", listen_address="0.0.0.0", listen_port=11112
+)
 
 # browser ws clients
 clients = []
@@ -86,15 +114,32 @@ def get_db():
 def info():
     return {"appname": "AIHEALTH", "version": "1.0"}
 
+
+def sort_key(item):
+    study_datetime = datetime.strptime(
+        item["StudyDate"] + item["StudyTime"], "%Y%m%d%H%M%S.%f"
+    )
+    return study_datetime
+
+
 def get_value_original_string(key, obj):
-    if key == "PatientName": # and "original_string" in obj:
+    if key == "PatientName":  # and "original_string" in obj:
         if isinstance(obj, PersonName):
             return f"{obj}"
     return obj
 
-@app.get("/inputs/list", tags=["Inputs list"])
+
+@app.get("/schedules", tags=["Cron list"])
+def schedules():
+    return cron_manager.list()
+
+
+@app.get("/inputs", tags=["Inputs list"])
 def pacs_images():
-    ds = gen_dicom_filter()
+    now = datetime.now()
+    dateend = now
+    datestart = now - timedelta(hours=1)
+    ds = gen_dicom_filter(datestart, dateend)
     if network_parameters is None:
         raise "Error: network parameters"
 
@@ -105,7 +150,9 @@ def pacs_images():
         ae_title=network_parameters["server_ae_title"],
     )
     if client.is_established:
-        responses = client.send_c_find(ds, dcm.StudyRootQueryRetrieveInformationModelFind)
+        responses = client.send_c_find(
+            ds, dcm.StudyRootQueryRetrieveInformationModelFind
+        )
         datasets = []
         for status, dataset in responses:
             # keys = [
@@ -132,7 +179,10 @@ def pacs_images():
             # # if "PatientID" in dir(dataset):
             if "PatientID" in dir(dataset):
                 obj = dataset.to_json_dict()
-                nobj = {z[4]: get_value_original_string(z[4], dataset[z[4]]._value) for z in [datadict.get_entry(Tag(k)) for k in obj.keys()]}
+                nobj = {
+                    z[4]: get_value_original_string(z[4], dataset[z[4]]._value)
+                    for z in [datadict.get_entry(Tag(k)) for k in obj.keys()]
+                }
                 datasets.append(nobj)
                 # taginfo = datadict.get_entry(Tag("00204000"))
                 # key, desc = taginfo[4], taginfo[2]
@@ -140,7 +190,8 @@ def pacs_images():
             #     datasets.append({**{k: dataset[k]._value for k in keys}, "json": dataset.to_json_dict()})
             # for k in dataset:
             #     print(k)
-        return datasets
+        sorted_data = sorted(datasets, key=sort_key, reverse=True)
+        return sorted_data
     return []
 
 
