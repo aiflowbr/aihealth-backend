@@ -59,6 +59,10 @@ def get_nodes(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Node).offset(skip).limit(limit).all()
 
 
+def get_nodes_all(db: Session):
+    return db.query(models.Node).all()
+
+
 def get_node_by_host_port(db: Session, address: str, port: int):
     return (
         db.query(models.Node)
@@ -94,4 +98,9 @@ def update_node(db: Session, db_node: models.Node, userdata: schemas.NodeBase):
     db_node.fetch_interval_type = userdata.fetch_interval_type
     db.commit()
     db.refresh(db_node)
+    return db_node
+
+def delete_node(db: Session, db_node: models.Node):
+    db.delete(db_node)
+    db.commit()
     return db_node

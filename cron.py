@@ -3,12 +3,13 @@ import threading
 import time
 from datetime import datetime
 
+
 class CronManager:
     def __init__(self, debug=False):
         self.debug = debug
         self.threads = []
 
-    def schedule(self, node, func, min=0, sec=0):
+    def schedule(self, key, node, func, min=0, sec=0):
         cron_pattern = ""
         interv = 0
         interv_t = "s"
@@ -28,7 +29,7 @@ class CronManager:
 
         cron = croniter.croniter(cron_pattern)
         thread_dict = {
-            "name": node,
+            "name": key,
             "stop_event": threading.Event(),
             "sleep_event": threading.Event(),
             "interval": interv,
@@ -36,7 +37,7 @@ class CronManager:
             "cron": cron,
             "thread": None
         }
-        thread = threading.Thread(target=self._execute_function, args=(thread_dict, cron, node, func))
+        thread = threading.Thread(target=self._execute_function, args=(thread_dict, cron, key, node, func))
         thread_dict["thread"] = thread
         self.threads.append(thread_dict)
         thread.start()
@@ -51,7 +52,7 @@ class CronManager:
             }
         } for a in self.threads]
 
-    def _execute_function(self, events, cron, node, func):
+    def _execute_function(self, events, cron, key, node, func):
         try:
             while not events["stop_event"].is_set():
                 next_run_time = cron.get_next()
@@ -59,7 +60,7 @@ class CronManager:
                 sleep_time = next_run_time - time.time()
                 if sleep_time > 0:
                     if self.debug:
-                        print(f"sleeping {sleep_time}")
+                        print(f"{key}: sleeping {sleep_time}")
                     events["sleep_event"].wait(sleep_time)
                     events["sleep_event"].clear()
                 if not events["stop_event"].is_set():
@@ -67,8 +68,8 @@ class CronManager:
         except KeyboardInterrupt:
             pass
 
-    def stop(self, node):
-        index = next((index for index, valor in enumerate(self.threads) if valor["name"] == node), None)
+    def stop(self, key):
+        index = next((index for index, valor in enumerate(self.threads) if valor["name"] == key), None)
         if index is not None:
             thread_info = self.threads[index]
             thread_info["stop_event"].set()
@@ -85,12 +86,4 @@ class CronManager:
         self.threads = []
 
 
-# cron = CronManager(debug=True)
-# cron.schedule("*/1 * * * *", "ORTHANC")
-# cron.schedule("* * * * * *", "STATIX")
-# try:
-#     time.sleep(1000000000)
-# # ctrl + c
-# except KeyboardInterrupt:
-#     cron.stop_all()
-#     pass
+nodes_fetcher = CronManager(debug=False)
