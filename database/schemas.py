@@ -43,11 +43,16 @@ class User(UserBase):
 
 
 class NodeBase(BaseModel):
-    id: int
     aetitle: str
     address: str
     port: int
     fetch_interval: int
+    fetch_interval_type: str
+
 
 class Node(NodeBase):
-    pass
+    id: int
+
+
+class NodeStatus(Node):
+    status: bool

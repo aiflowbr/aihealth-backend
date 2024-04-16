@@ -9,7 +9,7 @@ from time import sleep
 from cron import CronManager
 
 from database import crud, models, schemas
-from database.database import SessionLocal, engine
+from database.database import engine, get_db
 
 # from keras_visualizer import visualizer
 import tempfile
@@ -29,7 +29,10 @@ from datetime import datetime, timedelta
 def fetch_node(node):
     print(f"FETCH NODE... {node}")
 
+
 cron = CronManager(debug=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Initializing...")
@@ -39,13 +42,17 @@ async def lifespan(app: FastAPI):
     print("Finishing...")
     cron.stop_all()
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 async def startup_event_handler():
     print("Backend STARTED")
 
+
 async def shutdown_event_handler():
     print("Backend FINISHED")
+
 
 app.add_event_handler("startup", startup_event_handler)
 app.add_event_handler("shutdown", shutdown_event_handler)
@@ -107,17 +114,8 @@ compute_nodes = [
 ]
 
 
+app.include_router(nodes.router)
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-nodes.routes(app, "/nodes", crud, models, schemas, get_db)
 
 @app.get("/", tags=["Info"])
 def info():

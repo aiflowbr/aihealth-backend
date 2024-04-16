@@ -23,7 +23,7 @@ class Audit(Base):
     user = relationship("User", back_populates="logons")
 
 
-class Nodes(Base):
+class Node(Base):
     __tablename__ = "nodes"
 
     id = Column(Integer, primary_key=True)
@@ -31,6 +31,16 @@ class Nodes(Base):
     address = Column(String, index=True)
     port = Column(Integer, index=True)
     fetch_interval = Column(Integer)
+    fetch_interval_type = Column(String)
+    _status = False
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
 
 
 class Settings(Base):

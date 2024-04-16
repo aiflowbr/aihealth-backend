@@ -56,4 +56,42 @@ def create_user_item(db: Session, audit: schemas.AuditCreate, user_id: int):
 
 
 def get_nodes(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Nodes).offset(skip).limit(limit).all()
+    return db.query(models.Node).offset(skip).limit(limit).all()
+
+
+def get_node_by_host_port(db: Session, address: str, port: int):
+    return (
+        db.query(models.Node)
+        .filter(models.Node.address == address, models.Node.port == port)
+        .first()
+    )
+
+
+def create_node(db: Session, node: schemas.NodeBase):
+    db_node = models.Node(
+        aetitle=node.aetitle,
+        address=node.address,
+        port=node.port,
+        fetch_interval=node.fetch_interval,
+        fetch_interval_type=node.fetch_interval_type,
+    )
+    db.add(db_node)
+    db.commit()
+    db.refresh(db_node)
+    return db_node
+
+
+def get_node(db: Session, node_id: int):
+    obj = db.query(models.Node).filter(models.Node.id == node_id).first()
+    return obj
+
+
+def update_node(db: Session, db_node: models.Node, userdata: schemas.NodeBase):
+    db_node.aetitle = userdata.aetitle
+    db_node.address = userdata.address
+    db_node.port = userdata.port
+    db_node.fetch_interval = userdata.fetch_interval
+    db_node.fetch_interval_type = userdata.fetch_interval_type
+    db.commit()
+    db.refresh(db_node)
+    return db_node
