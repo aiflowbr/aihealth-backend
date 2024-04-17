@@ -56,3 +56,12 @@ class Node(NodeBase):
 
 class NodeStatus(Node):
     status: bool
+
+
+class SettingsBase(BaseModel):
+    key: str
+    value: str
+
+
+class Settings(SettingsBase):
+    id: int

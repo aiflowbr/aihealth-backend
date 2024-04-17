@@ -16,7 +16,7 @@ from database.database import engine, SessionLocal, get_db
 import tempfile
 import deep
 
-from routes import nodes
+from routes import nodes, inputs, settings
 from fetchers import fetch_node
 
 ## DICOM
@@ -27,6 +27,8 @@ from pydicom.valuerep import PersonName
 from dicom import dcm
 from datetime import datetime, timedelta
 
+
+db = SessionLocal()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,11 +44,29 @@ async def lifespan(app: FastAPI):
                     "fetch_interval_type": "s",
                 }
             ),
-            SessionLocal(),
+            db,
+        )
+        settings.create_setting(
+            schemas.SettingsBase(
+                **{
+                    "key": "LOCAL_AETITLE",
+                    "value": "AIHEALTHMAC"
+                }
+            ),
+            db,
+        )
+        settings.create_setting(
+            schemas.SettingsBase(
+                **{
+                    "key": "LOCAL_PORT",
+                    "value": "11112"
+                }
+            ),
+            db,
         )
     except:
         pass
-    db_nodes = crud.get_nodes_all(SessionLocal())
+    db_nodes = crud.get_nodes_all(db)
     for node in db_nodes:
         if node.fetch_interval_type == "s":
             nodes_fetcher.schedule(
@@ -125,8 +145,12 @@ network_parameters = {
     "server_ae_title": "ORTHANC",
     "local_ae_title": "AIHEALTHMAC",
 }
+
+# loading settings
+LOCAL_AETITLE = crud.get_setting_by_key(db, "LOCAL_AETITLE").value
+LOCAL_PORT = int(crud.get_setting_by_key(db, "LOCAL_PORT").value)
 dicom_listener = dcm.init_server(
-    ae_title="AIHEALTHMAC", listen_address="0.0.0.0", listen_port=11112
+    ae_title=LOCAL_AETITLE, listen_address="0.0.0.0", listen_port=LOCAL_PORT
 )
 
 # browser ws clients
@@ -149,6 +173,8 @@ def schedules():
 
 
 app.include_router(nodes.router)
+app.include_router(inputs.router)
+app.include_router(settings.router)
 
 
 # def sort_key(item):

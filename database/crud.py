@@ -85,8 +85,8 @@ def create_node(db: Session, node: schemas.NodeBase):
     return db_node
 
 
-def get_node(db: Session, node_id: int):
-    obj = db.query(models.Node).filter(models.Node.id == node_id).first()
+def get_node(db: Session, id: int):
+    obj = db.query(models.Node).filter(models.Node.id == id).first()
     return obj
 
 
@@ -104,3 +104,43 @@ def delete_node(db: Session, db_node: models.Node):
     db.delete(db_node)
     db.commit()
     return db_node
+
+#########
+# settings
+def get_settings(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Settings).offset(skip).limit(limit).all()
+
+
+def get_setting(db: Session, id: int):
+    obj = db.query(models.Settings).filter(models.Settings.id == id).first()
+    return obj
+
+
+def get_setting_by_key(db: Session, key: str):
+    return (
+        db.query(models.Settings)
+        .filter(models.Settings.key == key)
+        .first()
+    )
+
+
+def create_setting(db: Session, setting: schemas.SettingsBase):
+    db_setting = models.Settings(key = setting.key, value = setting.value)
+    db.add(db_setting)
+    db.commit()
+    db.refresh(db_setting)
+    return db_setting
+
+
+def update_setting(db: Session, db_setting: models.Settings, userdata: schemas.SettingsBase):
+    db_setting.key = userdata.key
+    db_setting.value = userdata.value
+    db.commit()
+    db.refresh(db_setting)
+    return db_setting
+
+
+def delete_setting(db: Session, db_setting: models.Settings):
+    db.delete(db_setting)
+    db.commit()
+    return db_setting

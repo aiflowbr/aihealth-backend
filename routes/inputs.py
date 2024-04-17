@@ -7,11 +7,12 @@ from database.database import get_db
 from cron import nodes_fetcher
 
 router = APIRouter()
-url_base = "/nodes"
+url_base = "/inputs"
+url_base_id = f"{url_base}/{{id}}"
 
 from fetchers import fetch_node
 
-@router.post(url_base, response_model=schemas.Node, tags=["Nodes"])
+@router.post(url_base, response_model=schemas.Node, tags=["Inputs"])
 def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
     db_node = crud.get_node_by_host_port(db, address=node.address, port=node.port)
     if db_node:
@@ -24,11 +25,11 @@ def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
     return new_node
 
 
-@router.put("/nodes/{id}", response_model=schemas.Node, tags=["Nodes"])
+@router.put(url_base_id, response_model=schemas.Node, tags=["Inputs"])
 def update_node(id: int, node: schemas.NodeBase, db: Session = Depends(get_db)):
     db_node = crud.get_node(db, id=id)
     if not db_node:
-        raise HTTPException(status_code=400, detail="Node not found")
+        raise HTTPException(status_code=400, detail="Node ID not found")
     try:
         ret = crud.update_node(db=db, db_node=db_node, userdata=node)
     except Exception as e:
@@ -41,7 +42,7 @@ def update_node(id: int, node: schemas.NodeBase, db: Session = Depends(get_db)):
     return ret
 
 
-@router.delete(f"{url_base}/{{id}}", response_model=schemas.Node, tags=["Nodes"])
+@router.delete(url_base_id, response_model=schemas.Node, tags=["Inputs"])
 def delete_node(id: int, db: Session = Depends(get_db)):
     db_node = crud.get_node(db, id=id)
     if db_node is None:
@@ -52,7 +53,7 @@ def delete_node(id: int, db: Session = Depends(get_db)):
 
 
 
-@router.get(url_base, response_model=list[schemas.NodeStatus], tags=["Nodes"])
+@router.get(url_base, response_model=list[schemas.NodeStatus], tags=["Inputs"])
 def read_nodes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     nodes = crud.get_nodes(db, skip=skip, limit=limit)
     for node in nodes:
@@ -60,7 +61,7 @@ def read_nodes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return nodes
 
 
-@router.get(f"{url_base}/{{id}}", response_model=schemas.NodeStatus, tags=["Nodes"])
+@router.get(url_base_id, response_model=schemas.NodeStatus, tags=["Inputs"])
 def read_node(id: int, db: Session = Depends(get_db)):
     db_node = crud.get_node(db, id=id)
     if db_node is None:

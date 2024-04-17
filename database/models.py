@@ -48,7 +48,7 @@ class Settings(Base):
 
     id = Column(Integer, primary_key=True)
     key = Column(String, index=True)
-    value = Column(String, index=True)
+    value = Column(String)
     # owner_id = Column(Integer, ForeignKey("users.id"))
     # owner = relationship("User", back_populates="items")
 
