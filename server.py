@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import os
 from fastapi import Depends, FastAPI, HTTPException, Response, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import asyncio
 from queue import Queue
@@ -31,27 +32,46 @@ from datetime import datetime, timedelta
 async def lifespan(app: FastAPI):
     print("Initializing...")
     try:
-        nodes.create_node(schemas.NodeBase(**{
-            "aetitle": "ORTHANC",
-            "address": "localhost",
-            "port": 4242,
-            "fetch_interval": 10,
-            "fetch_interval_type": "s"
-        }), SessionLocal())
+        nodes.create_node(
+            schemas.NodeBase(
+                **{
+                    "aetitle": "ORTHANC",
+                    "address": "localhost",
+                    "port": 4242,
+                    "fetch_interval": 10,
+                    "fetch_interval_type": "s",
+                }
+            ),
+            SessionLocal(),
+        )
     except:
         pass
     db_nodes = crud.get_nodes_all(SessionLocal())
     for node in db_nodes:
         if node.fetch_interval_type == "s":
-            nodes_fetcher.schedule(f"{node.address}:{node.port}", node, fetch_node, sec=node.fetch_interval)
+            nodes_fetcher.schedule(
+                f"{node.address}:{node.port}", node, fetch_node, sec=node.fetch_interval
+            )
         else:
-            nodes_fetcher.schedule(f"{node.address}:{node.port}", node, fetch_node, min=node.fetch_interval)
+            nodes_fetcher.schedule(
+                f"{node.address}:{node.port}", node, fetch_node, min=node.fetch_interval
+            )
     yield
     print("Finishing...")
     nodes_fetcher.stop_all()
 
 
 app = FastAPI(lifespan=lifespan)
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 async def startup_event_handler():
@@ -122,14 +142,13 @@ models.Base.metadata.create_all(bind=engine)
 def info():
     return {"appname": "AIHEALTH", "version": "1.0"}
 
+
 @app.get("/fetchers", tags=["Cron list"])
 def schedules():
     return nodes_fetcher.list()
 
+
 app.include_router(nodes.router)
-
-
-
 
 
 # def sort_key(item):
@@ -144,9 +163,6 @@ app.include_router(nodes.router)
 #         if isinstance(obj, PersonName):
 #             return f"{obj}"
 #     return obj
-
-
-
 
 
 # @app.get("/inputs", tags=["Inputs list"])
@@ -279,6 +295,7 @@ compute_nodes = [
     {"server": "localhost:8098", "status": True},
     {"server": "localhost:8099", "status": True},
 ]
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
