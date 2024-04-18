@@ -29,6 +29,9 @@ from dicom import listener
 
 db = SessionLocal()
 
+# DICOM server listener
+listener.start_listener()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -127,9 +130,6 @@ def schedules():
 app.include_router(nodes.router)
 app.include_router(inputs.router)
 app.include_router(settings.router)
-
-
-listener.start_listener()
 
 
 # @app.get("/inputs", tags=["Inputs list"])
