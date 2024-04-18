@@ -1,16 +1,21 @@
 from contextlib import asynccontextmanager
-import os
-from fastapi import Depends, FastAPI, HTTPException, Response, WebSocket
+
+# import os
+from fastapi import Depends, FastAPI, WebSocket  # , HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-import asyncio
-from queue import Queue
+
+# from sqlalchemy.orm import Session
+
+# import asyncio
+
+# from queue import Queue
 import json
-from time import sleep
+
+# from time import sleep
 from cron import nodes_fetcher
 
 from database import crud, models, schemas
-from database.database import engine, SessionLocal, get_db
+from database.database import engine, SessionLocal  # , get_db
 
 # from keras_visualizer import visualizer
 import tempfile
@@ -20,15 +25,10 @@ from routes import nodes, inputs, settings
 from fetchers import fetch_node
 
 ## DICOM
-from pydicom.dataset import Dataset
-from pydicom import datadict
-from pydicom.tag import Tag, BaseTag, TagType
-from pydicom.valuerep import PersonName
-from dicom import dcm
-from datetime import datetime, timedelta
-
+from dicom import listener
 
 db = SessionLocal()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,25 +46,21 @@ async def lifespan(app: FastAPI):
             ),
             db,
         )
+    except Exception:
+        pass
+    try:
         settings.create_setting(
-            schemas.SettingsBase(
-                **{
-                    "key": "LOCAL_AETITLE",
-                    "value": "AIHEALTHMAC"
-                }
-            ),
+            schemas.SettingsBase(**{"key": "LOCAL_AETITLE", "value": "AIHEALTHMAC"}),
             db,
         )
+    except Exception:
+        pass
+    try:
         settings.create_setting(
-            schemas.SettingsBase(
-                **{
-                    "key": "LOCAL_PORT",
-                    "value": "11112"
-                }
-            ),
+            schemas.SettingsBase(**{"key": "LOCAL_PORT", "value": "11112"}),
             db,
         )
-    except:
+    except Exception:
         pass
     db_nodes = crud.get_nodes_all(db)
     for node in db_nodes:
@@ -107,51 +103,6 @@ app.add_event_handler("shutdown", shutdown_event_handler)
 
 
 ########### ROUTES
-def gen_dicom_filter(datestart, dateend):
-    ds = Dataset()
-    # ds.Modality = ""  # "DX"
-    ds.Modality = ""  # "DX"
-    # ds.ModalitiesInStudy = "DX"
-    ds.ModalitiesInStudy = ""
-    ds.AccessionNumber = ""
-    ds.StudyDate = f"{datestart.strftime('%Y%m%d')}-{dateend.strftime('%Y%m%d')}"
-    ds.StudyTime = f"{datestart.strftime('%H%M%S')}-{dateend.strftime('%H%M%S')}"  # "170000-173000"
-    print(f"Date: {ds.StudyDate}, Time: {ds.StudyTime}")
-    # ds.StudyTime = ""
-    ds.TimezoneOffsetFromUTC = ""
-    # ds.PatientID = ""  # "1795017"
-    ds.PatientID = ""
-    # ds.PatientPosition = "PA\\AP"
-    ds.PatientPosition = ""
-    ds.PatientName = ""
-    ds.PatientBirthDate = ""
-    ds.SeriesInstanceUID = ""
-    ds.StudyInstanceUID = ""
-    ds.StudyID = ""
-    # ds.StudyDescription = "TORAX"
-    ds.StudyDescription = ""
-    ds.FileSetID = ""
-    ds.ModalitiesInStudy = ""
-    ds.NumberOfStudyRelatedInstances = ""
-    ds.ReferringPhysicianName = ""
-    ds.QueryRetrieveLevel = "STUDY"
-    ds.ImageComments = ""
-    return ds
-
-
-network_parameters = {
-    "server_address": "localhost",
-    "server_port": 4242,
-    "server_ae_title": "ORTHANC",
-    "local_ae_title": "AIHEALTHMAC",
-}
-
-# loading settings
-LOCAL_AETITLE = crud.get_setting_by_key(db, "LOCAL_AETITLE").value
-LOCAL_PORT = int(crud.get_setting_by_key(db, "LOCAL_PORT").value)
-dicom_listener = dcm.init_server(
-    ae_title=LOCAL_AETITLE, listen_address="0.0.0.0", listen_port=LOCAL_PORT
-)
 
 # browser ws clients
 clients = []
@@ -159,6 +110,7 @@ clients = []
 # compute servers
 compute_sockets = []
 
+# cria banco de dados
 models.Base.metadata.create_all(bind=engine)
 
 
@@ -167,7 +119,7 @@ def info():
     return {"appname": "AIHEALTH", "version": "1.0"}
 
 
-@app.get("/fetchers", tags=["Cron list"])
+@app.get("/fetchers", tags=["Fetchers list"])
 def schedules():
     return nodes_fetcher.list()
 
@@ -177,78 +129,12 @@ app.include_router(inputs.router)
 app.include_router(settings.router)
 
 
-# def sort_key(item):
-#     study_datetime = datetime.strptime(
-#         item["StudyDate"] + item["StudyTime"], "%Y%m%d%H%M%S.%f"
-#     )
-#     return study_datetime
-
-
-# def get_value_original_string(key, obj):
-#     if key == "PatientName":  # and "original_string" in obj:
-#         if isinstance(obj, PersonName):
-#             return f"{obj}"
-#     return obj
+listener.start_listener()
 
 
 # @app.get("/inputs", tags=["Inputs list"])
 # def pacs_images():
-#     now = datetime.now()
-#     dateend = now
-#     datestart = now - timedelta(hours=1)
-#     ds = gen_dicom_filter(datestart, dateend)
-#     if network_parameters is None:
-#         raise "Error: network parameters"
 
-#     client = dcm.init_client(
-#         client_ae_title=network_parameters["local_ae_title"],
-#         address=network_parameters["server_address"],
-#         port=network_parameters["server_port"],
-#         ae_title=network_parameters["server_ae_title"],
-#     )
-#     if client.is_established:
-#         responses = client.send_c_find(
-#             ds, dcm.StudyRootQueryRetrieveInformationModelFind
-#         )
-#         datasets = []
-#         for status, dataset in responses:
-#             # keys = [
-#             #     "AccessionNumber",
-#             #     "ImageComments",
-#             #     "ModalitiesInStudy",
-#             #     "Modality",
-#             #     "NumberOfStudyRelatedInstances",
-#             #     "PatientBirthDate",
-#             #     "PatientID",
-#             #     "PatientName",
-#             #     "PatientPosition",
-#             #     "QueryRetrieveLevel",
-#             #     "ReferringPhysicianName",
-#             #     "RetrieveAETitle",
-#             #     "SeriesInstanceUID",
-#             #     "SpecificCharacterSet",
-#             #     "StudyDate",
-#             #     "StudyDescription",
-#             #     "StudyID",
-#             #     "StudyInstanceUID",
-#             #     "StudyTime",
-#             #     "TimezoneOffsetFromUTC"]
-#             # # if "PatientID" in dir(dataset):
-#             if "PatientID" in dir(dataset):
-#                 obj = dataset.to_json_dict()
-#                 nobj = {
-#                     z[4]: get_value_original_string(z[4], dataset[z[4]]._value)
-#                     for z in [datadict.get_entry(Tag(k)) for k in obj.keys()]
-#                 }
-#                 datasets.append(nobj)
-#                 # taginfo = datadict.get_entry(Tag("00204000"))
-#                 # key, desc = taginfo[4], taginfo[2]
-#                 # datasets.append({**{k: dataset[k]._value for k in keys}, "json": obj})
-#             #     datasets.append({**{k: dataset[k]._value for k in keys}, "json": dataset.to_json_dict()})
-#             # for k in dataset:
-#             #     print(k)
-#         sorted_data = sorted(datasets, key=sort_key, reverse=True)
-#         return sorted_data
 #     return []
 
 

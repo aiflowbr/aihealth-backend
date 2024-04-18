@@ -18,7 +18,7 @@ from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,
     ComputedRadiographyImageStorage,
     PatientRootQueryRetrieveInformationModelMove,
-    CompositeInstanceRootRetrieveMove
+    CompositeInstanceRootRetrieveMove,
 )
 
 
@@ -92,7 +92,10 @@ def init_server(ae_title="AIHEALTH", listen_address="0.0.0.0", listen_port=11112
     ae_server.maximum_pdu_size = 0
     ae_server.supported_contexts = AllStoragePresentationContexts
     scp = ae_server.start_server(
-        (listen_address, listen_port), block=False, evt_handlers=handlers, ae_title=ae_title
+        (listen_address, listen_port),
+        block=False,
+        evt_handlers=handlers,
+        ae_title=ae_title,
     )
     return scp
 
