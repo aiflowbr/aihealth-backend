@@ -1,7 +1,8 @@
 import hashlib
 from sqlalchemy.orm import Session
-
 from . import models, schemas
+
+# print(list(schemas.NodeStatus.model_fields.keys()))
 
 
 def get_user(db: Session, user_id: int):
@@ -63,12 +64,13 @@ def get_nodes_all(db: Session):
     return db.query(models.Node).all()
 
 
+def get_nodes_all_status(db: Session):
+    nodes_dict = [{k: getattr(n, k) for k in list(schemas.NodeStatus.model_fields.keys())} for n in get_nodes_all(db)]
+    return nodes_dict
+
+
 def get_node_by_host_port(db: Session, address: str, port: int):
-    return (
-        db.query(models.Node)
-        .filter(models.Node.address == address, models.Node.port == port)
-        .first()
-    )
+    return db.query(models.Node).filter(models.Node.address == address, models.Node.port == port).first()
 
 
 def create_node(db: Session, node: schemas.NodeBase):

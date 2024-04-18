@@ -1,3 +1,4 @@
+import asyncio
 import croniter
 import threading
 import time
@@ -35,6 +36,7 @@ class CronManager:
             "interval": interv,
             "interval_type": interv_t,
             "cron": cron,
+            "alive": False,
             "thread": None
         }
         thread = threading.Thread(target=self._execute_function, args=(thread_dict, cron, key, node, func))
@@ -42,15 +44,31 @@ class CronManager:
         self.threads.append(thread_dict)
         thread.start()
 
+
+    def set_alive(self, key, value):
+        el = next(filter(lambda x: x.get("name") == key, self.threads), None)
+        if el is not None:
+            el["alive"] = value
+        else:
+            el["alive"] = False
+
+
+    def get_alive(self, key):
+        el = next(filter(lambda x: x.get("name") == key, self.threads), None)
+        if el is not None:
+            return el["alive"]
+        return False
+
+
     def list(self):
-        return [{
+        return {
             a["name"]: {
-                "alive": a["thread"].is_alive(),
+                "alive": a["alive"],
                 "interval": a["interval"],
                 "interval_type": a["interval_type"],
                 "next_run": datetime.fromtimestamp(a["next_run"])
             }
-        } for a in self.threads]
+        for a in self.threads}
 
     def _execute_function(self, events, cron, key, node, func):
         try:
@@ -64,7 +82,10 @@ class CronManager:
                     events["sleep_event"].wait(sleep_time)
                     events["sleep_event"].clear()
                 if not events["stop_event"].is_set():
-                    func(node)
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(func(node))
+                    loop.close()
         except KeyboardInterrupt:
             pass
 
@@ -84,6 +105,3 @@ class CronManager:
         for thread in self.threads:
             thread["thread"].join()
         self.threads = []
-
-
-nodes_fetcher = CronManager(debug=False)

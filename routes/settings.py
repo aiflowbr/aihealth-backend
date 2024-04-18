@@ -4,13 +4,9 @@ from sqlalchemy.orm import Session
 from database import crud, schemas
 from database.database import get_db
 
-from cron import nodes_fetcher
-
-
 router = APIRouter()
 url_base = "/settings"
 url_base_id = f"{url_base}/{{id}}"
-from fetchers import fetch_node
 
 
 @router.post(url_base, response_model=schemas.Settings, tags=["Settings"])

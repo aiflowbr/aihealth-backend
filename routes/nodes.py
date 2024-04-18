@@ -1,15 +1,15 @@
 from fastapi import Depends, APIRouter, HTTPException
 from sqlalchemy.orm import Session
-
 from database import crud, schemas
 from database.database import get_db
 
-from cron import nodes_fetcher
 
 router = APIRouter()
 url_base = "/nodes"
 
-from fetchers import fetch_node
+
+from fetchers import fetch_node, nodes_fetcher
+
 
 @router.post(url_base, response_model=schemas.Node, tags=["Nodes"])
 def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
@@ -30,6 +30,10 @@ def update_node(id: int, node: schemas.NodeBase, db: Session = Depends(get_db)):
     if not db_node:
         raise HTTPException(status_code=400, detail="Node not found")
     try:
+        db_node_mod = crud.get_node_by_host_port(db, address=node.address, port=node.port)
+        # mudou host ou porta e o novo ja existe
+        if (node.address != db_node.address or node.port != db_node.port) and db_node_mod:
+            raise HTTPException(status_code=400, detail=f"Node {node.address}:{node.port} already registered")
         ret = crud.update_node(db=db, db_node=db_node, userdata=node)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -51,12 +55,9 @@ def delete_node(id: int, db: Session = Depends(get_db)):
     return db_node
 
 
-
 @router.get(url_base, response_model=list[schemas.NodeStatus], tags=["Nodes"])
 def read_nodes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     nodes = crud.get_nodes(db, skip=skip, limit=limit)
-    for node in nodes:
-        node.status = True
     return nodes
 
 

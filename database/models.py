@@ -1,9 +1,10 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from database.database import Base
+from sqlalchemy_serializer import SerializerMixin
+from fetchers import nodes_fetcher
 
-
-class User(Base):
+class User(Base, SerializerMixin):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, index=True)
@@ -13,7 +14,7 @@ class User(Base):
     logons = relationship("Audit", back_populates="user")
 
 
-class Audit(Base):
+class Audit(Base, SerializerMixin):
     __tablename__ = "audit"
 
     id = Column(Integer, primary_key=True)
@@ -23,7 +24,7 @@ class Audit(Base):
     user = relationship("User", back_populates="logons")
 
 
-class Node(Base):
+class Node(Base, SerializerMixin):
     __tablename__ = "nodes"
 
     id = Column(Integer, primary_key=True)
@@ -32,18 +33,18 @@ class Node(Base):
     port = Column(Integer, index=True)
     fetch_interval = Column(Integer)
     fetch_interval_type = Column(String)
-    _status = False
+    # _status = False
 
     @property
     def status(self):
-        return self._status
+        return nodes_fetcher.get_alive(f"{self.address}:{self.port}")
 
-    @status.setter
-    def status(self, value):
-        self._status = value
+    # @status.setter
+    # def status(self, value):
+    #     self._status = value
 
 
-class Settings(Base):
+class Settings(Base, SerializerMixin):
     __tablename__ = "settings"
 
     id = Column(Integer, primary_key=True)
@@ -53,7 +54,7 @@ class Settings(Base):
     # owner = relationship("User", back_populates="items")
 
 
-class Inputs(Base):
+class Inputs(Base, SerializerMixin):
     __tablename__ = "inputs"
 
     id = Column(Integer, primary_key=True)

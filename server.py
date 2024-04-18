@@ -1,33 +1,19 @@
 from contextlib import asynccontextmanager
-
 # import os
 from fastapi import Depends, FastAPI, WebSocket  # , HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-# from sqlalchemy.orm import Session
-
-# import asyncio
-
-# from queue import Queue
-import json
-
-# from time import sleep
-from cron import nodes_fetcher
-
-from database import crud, models, schemas
-from database.database import engine, SessionLocal  # , get_db
-
-# from keras_visualizer import visualizer
-import tempfile
-import deep
-
-from routes import nodes, inputs, settings
-from fetchers import fetch_node
+from database.crud import get_nodes_all, get_nodes_all_status
+from database.database import Base, engine, SessionLocal  # , get_db
+from routes.nodes import router as nodes_routes
+from routes.inputs import router as inputs_routes
+from routes.settings import router as settings_routes
+from fetchers import fetch_node, nodes_fetcher
+from seeds import do_seeds
+from ws import ws_clients
 
 ## DICOM
 from dicom import listener
-
-db = SessionLocal()
 
 # DICOM server listener
 listener.start_listener()
@@ -36,36 +22,8 @@ listener.start_listener()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Initializing...")
-    try:
-        nodes.create_node(
-            schemas.NodeBase(
-                **{
-                    "aetitle": "ORTHANC",
-                    "address": "localhost",
-                    "port": 4242,
-                    "fetch_interval": 10,
-                    "fetch_interval_type": "s",
-                }
-            ),
-            db,
-        )
-    except Exception:
-        pass
-    try:
-        settings.create_setting(
-            schemas.SettingsBase(**{"key": "LOCAL_AETITLE", "value": "AIHEALTHMAC"}),
-            db,
-        )
-    except Exception:
-        pass
-    try:
-        settings.create_setting(
-            schemas.SettingsBase(**{"key": "LOCAL_PORT", "value": "11112"}),
-            db,
-        )
-    except Exception:
-        pass
-    db_nodes = crud.get_nodes_all(db)
+    do_seeds()
+    db_nodes = get_nodes_all(SessionLocal())
     for node in db_nodes:
         if node.fetch_interval_type == "s":
             nodes_fetcher.schedule(
@@ -106,15 +64,8 @@ app.add_event_handler("shutdown", shutdown_event_handler)
 
 
 ########### ROUTES
-
-# browser ws clients
-clients = []
-
-# compute servers
-compute_sockets = []
-
 # cria banco de dados
-models.Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 
 @app.get("/", tags=["Info"])
@@ -122,14 +73,14 @@ def info():
     return {"appname": "AIHEALTH", "version": "1.0"}
 
 
-@app.get("/fetchers", tags=["Fetchers list"])
+@app.get("/fetchers", tags=["Fetchers"])
 def schedules():
     return nodes_fetcher.list()
 
 
-app.include_router(nodes.router)
-app.include_router(inputs.router)
-app.include_router(settings.router)
+app.include_router(nodes_routes)
+app.include_router(inputs_routes)
+app.include_router(settings_routes)
 
 
 # @app.get("/inputs", tags=["Inputs list"])
@@ -203,6 +154,7 @@ app.include_router(settings.router)
 # #     items = crud.get_items(db, skip=skip, limit=limit)
 # #     return items
 
+
 compute_nodes = [
     {"server": "localhost:8098", "status": True},
     {"server": "localhost:8099", "status": True},
@@ -212,9 +164,14 @@ compute_nodes = [
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.append(websocket)
-    print("WS Client Connected...")
-    await websocket.send_json(json.dumps({"compute_nodes": compute_nodes}))
+    ws_clients.append(websocket)
+    print(f"WS Client Connected... TOTAL: {len(ws_clients)}")
+    await websocket.send_json({"compute_nodes": compute_nodes})
+
+    # send current nodes
+    await websocket.send_json({
+        "input_nodes": get_nodes_all_status(db=SessionLocal())
+    })
 
     # async de logs
     # asyncio.create_task(send_logs(websocket))
@@ -228,4 +185,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"WebSocket Error: {e}")
     finally:
-        clients.remove(websocket)
+        ws_clients.remove(websocket)
+        print(f"WS Client CLOSED... TOTAL: {len(ws_clients)}")
+        
