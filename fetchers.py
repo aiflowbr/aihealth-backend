@@ -1,6 +1,6 @@
 from pydicom.dataset import Dataset
 from pydicom import datadict
-from pydicom.tag import Tag, TagType
+from pydicom.tag import Tag
 from pydicom.valuerep import PersonName
 from dicom import dcm
 from datetime import datetime, timedelta
@@ -57,6 +57,18 @@ def gen_dicom_filter(datestart, dateend):
     ds.QueryRetrieveLevel = "STUDY"
     ds.ImageComments = ""
     return ds
+
+
+async def check_alive(node):
+    client = dcm.init_client(
+        client_ae_title=get_settings()["LOCAL_AETITLE"],
+        address=node.address,
+        port=int(node.port),
+        ae_title=node.aetitle,
+    )
+    connected = client.is_established
+    client.kill()
+    return connected
 
 
 async def fetch_node(new_node):
