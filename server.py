@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+
 # import os
 from fastapi import Depends, FastAPI, WebSocket  # , HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -85,7 +86,6 @@ app.include_router(settings_routes)
 
 # @app.get("/inputs", tags=["Inputs list"])
 # def pacs_images():
-
 #     return []
 
 
@@ -169,9 +169,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_json({"compute_nodes": compute_nodes})
 
     # send current nodes
-    await websocket.send_json({
-        "input_nodes": get_nodes_all_status(db=SessionLocal())
-    })
+    await websocket.send_json({"input_nodes": get_nodes_all_status(db=SessionLocal())})
 
     # async de logs
     # asyncio.create_task(send_logs(websocket))
@@ -187,4 +185,3 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         ws_clients.remove(websocket)
         print(f"WS Client CLOSED... TOTAL: {len(ws_clients)}")
-        

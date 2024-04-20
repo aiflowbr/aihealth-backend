@@ -10,6 +10,8 @@ from database.database import SessionLocal
 from ws import send_to_all, ws_clients
 from database import crud
 
+last_data = {}
+
 nodes_fetcher = CronManager(debug=False)
 
 
@@ -47,6 +49,7 @@ def gen_dicom_filter(datestart, dateend):
     ds.PatientBirthDate = ""
     ds.SeriesInstanceUID = ""
     ds.StudyInstanceUID = ""
+    ds.InstanceNumber = ""
     ds.StudyID = ""
     # ds.StudyDescription = "TORAX"
     ds.StudyDescription = ""
@@ -72,6 +75,10 @@ async def check_alive(node):
 
 
 async def fetch_node(new_node):
+    global last_data
+    node_key = f"{new_node.address}:{new_node.port}"
+    if new_node.id not in last_data:
+        last_data[new_node.id] = []
     db = SessionLocal()
     print(
         f"FETCH NODE... {new_node.aetitle} {new_node.address}:{new_node.port} (interval: {new_node.fetch_interval}{new_node.fetch_interval_type})"
@@ -87,6 +94,7 @@ async def fetch_node(new_node):
         ae_title=new_node.aetitle,
     )
     sorted_data = []
+    next_last_data = []
     server_state = False
     if client.is_established:
         server_state = True
@@ -95,47 +103,25 @@ async def fetch_node(new_node):
         )
         datasets = []
         for status, dataset in responses:
-            # keys = [
-            #     "AccessionNumber",
-            #     "ImageComments",
-            #     "ModalitiesInStudy",
-            #     "Modality",
-            #     "NumberOfStudyRelatedInstances",
-            #     "PatientBirthDate",
-            #     "PatientID",
-            #     "PatientName",
-            #     "PatientPosition",
-            #     "QueryRetrieveLevel",
-            #     "ReferringPhysicianName",
-            #     "RetrieveAETitle",
-            #     "SeriesInstanceUID",
-            #     "SpecificCharacterSet",
-            #     "StudyDate",
-            #     "StudyDescription",
-            #     "StudyID",
-            #     "StudyInstanceUID",
-            #     "StudyTime",
-            #     "TimezoneOffsetFromUTC"]
-            # # if "PatientID" in dir(dataset):
             if "PatientID" in dir(dataset):
                 obj = dataset.to_json_dict()
                 nobj = {
                     z[4]: get_value_original_string(z[4], dataset[z[4]]._value)
                     for z in [datadict.get_entry(Tag(k)) for k in obj.keys()]
                 }
-                datasets.append(nobj)
-                # taginfo = datadict.get_entry(Tag("00204000"))
-                # key, desc = taginfo[4], taginfo[2]
-                # datasets.append({**{k: dataset[k]._value for k in keys}, "json": obj})
-            #     datasets.append({**{k: dataset[k]._value for k in keys}, "json": dataset.to_json_dict()})
-            # for k in dataset:
-            #     print(k)
+                key_last_check = f"{nobj['SeriesInstanceUID']}_{nobj['InstanceNumber']}"
+                try:
+                    last_data[new_node.id].index(key_last_check)
+                except Exception:
+                    datasets.append(nobj)
+                next_last_data.append(key_last_check)
         sorted_data = sorted(datasets, key=sort_key, reverse=True)
-        await send_to_all({"new_data": sorted_data})
+        await send_to_all({"new_data": {"node_id": new_node.id, "data": sorted_data}})
 
+    last_data[new_node.id] = next_last_data
     # notify state changed
-    if nodes_fetcher.get_alive(f"{new_node.address}:{new_node.port}") != server_state:
-        nodes_fetcher.set_alive(f"{new_node.address}:{new_node.port}", server_state)
+    if nodes_fetcher.get_alive(node_key) != server_state:
+        nodes_fetcher.set_alive(node_key, server_state)
         print(f"SENDING TO WS: {len(ws_clients)}")
         await send_to_all({"input_nodes": crud.get_nodes_all_status(db)})
 
