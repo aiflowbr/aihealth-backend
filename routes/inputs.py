@@ -10,6 +10,7 @@ url_base_id = f"{url_base}/{{id}}"
 
 from fetchers import fetch_node, nodes_fetcher
 
+
 @router.post(url_base, response_model=schemas.Node, tags=["Inputs"])
 def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
     db_node = crud.get_node_by_host_port(db, address=node.address, port=node.port)
@@ -17,9 +18,13 @@ def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Node already registered")
     new_node = crud.create_node(db=db, node=node)
     if node.fetch_interval_type == "s":
-        nodes_fetcher.schedule(f"{node.address}:{node.port}", node, fetch_node, sec=node.fetch_interval)
+        nodes_fetcher.schedule(
+            f"{node.address}:{node.port}", node, fetch_node, sec=node.fetch_interval
+        )
     else:
-        nodes_fetcher.schedule(f"{node.address}:{node.port}", node, fetch_node, min=node.fetch_interval)
+        nodes_fetcher.schedule(
+            f"{node.address}:{node.port}", node, fetch_node, min=node.fetch_interval
+        )
     return new_node
 
 
@@ -34,9 +39,19 @@ def update_node(id: int, node: schemas.NodeBase, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
     nodes_fetcher.stop(f"{db_node.address}:{db_node.port}")
     if db_node.fetch_interval_type == "s":
-        nodes_fetcher.schedule(f"{db_node.address}:{db_node.port}", node, fetch_node, sec=db_node.fetch_interval)
+        nodes_fetcher.schedule(
+            f"{db_node.address}:{db_node.port}",
+            node,
+            fetch_node,
+            sec=db_node.fetch_interval,
+        )
     else:
-        nodes_fetcher.schedule(f"{db_node.address}:{db_node.port}", node, fetch_node, min=db_node.fetch_interval)
+        nodes_fetcher.schedule(
+            f"{db_node.address}:{db_node.port}",
+            node,
+            fetch_node,
+            min=db_node.fetch_interval,
+        )
     return ret
 
 
@@ -50,12 +65,11 @@ def delete_node(id: int, db: Session = Depends(get_db)):
     return db_node
 
 
-
 @router.get(url_base, response_model=list[schemas.NodeStatus], tags=["Inputs"])
 def read_nodes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     nodes = crud.get_nodes(db, skip=skip, limit=limit)
-    for node in nodes:
-        node.status = True
+    # for node in nodes:
+    #     node.status = True
     return nodes
 
 

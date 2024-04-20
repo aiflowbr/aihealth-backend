@@ -10,8 +10,8 @@ from database.database import SessionLocal
 from ws import send_to_all, ws_clients
 from database import crud
 
-
 nodes_fetcher = CronManager(debug=False)
+
 
 def sort_key(item):
     study_datetime = datetime.strptime(
@@ -21,9 +21,9 @@ def sort_key(item):
 
 
 def get_value_original_string(key, obj):
-    if key == "PatientName":  # and "original_string" in obj:
-        if isinstance(obj, PersonName):
-            return f"{obj}"
+    # if key == "PatientName" or key == "ReferringPhysicianName":  # and "original_string" in obj:
+    if isinstance(obj, PersonName):
+        return f"{obj}"
     return obj
 
 
@@ -131,12 +131,13 @@ async def fetch_node(new_node):
             # for k in dataset:
             #     print(k)
         sorted_data = sorted(datasets, key=sort_key, reverse=True)
+        await send_to_all({"new_data": sorted_data})
 
     # notify state changed
     if nodes_fetcher.get_alive(f"{new_node.address}:{new_node.port}") != server_state:
         nodes_fetcher.set_alive(f"{new_node.address}:{new_node.port}", server_state)
         print(f"SENDING TO WS: {len(ws_clients)}")
-        await send_to_all({ "input_nodes": crud.get_nodes_all_status(db) })
+        await send_to_all({"input_nodes": crud.get_nodes_all_status(db)})
 
     print(
         f"NODE RESPONSE... {new_node.aetitle} {new_node.address}:{new_node.port} len({len(sorted_data)})"
