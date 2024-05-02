@@ -9,6 +9,8 @@ from database.database import Base, engine, SessionLocal  # , get_db
 from routes.nodes import router as nodes_routes
 from routes.inputs import router as inputs_routes
 from routes.settings import router as settings_routes
+from routes.info import router as info_router
+from routes.users import router as users_router
 from fetchers import fetch_node, nodes_fetcher
 from seeds import do_seeds
 from ws import ws_clients
@@ -69,10 +71,11 @@ app.add_event_handler("shutdown", shutdown_event_handler)
 Base.metadata.create_all(bind=engine)
 
 
-@app.get("/", tags=["Info"])
-def info():
-    return {"appname": "AIHEALTH", "version": "1.0"}
+# @app.get("/", tags=["Info"])
+# def info():
+#     return {"appname": "AIHEALTH", "version": "1.0"}
 
+app.include_router(info_router)
 
 @app.get("/fetchers", tags=["Fetchers"])
 def schedules():
@@ -82,46 +85,12 @@ def schedules():
 app.include_router(nodes_routes)
 app.include_router(inputs_routes)
 app.include_router(settings_routes)
+app.include_router(users_router)
 
 
 # @app.get("/inputs", tags=["Inputs list"])
 # def pacs_images():
 #     return []
-
-
-# @app.post("/users/", response_model=schemas.User, tags=["Users"])
-# def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-#     db_user = crud.get_user_by_username(db, username=user.username)
-#     if db_user:
-#         raise HTTPException(status_code=400, detail="Username already registered")
-#     return crud.create_user(db=db, user=user)
-
-
-# @app.put("/users/{user_id}", response_model=schemas.User, tags=["Users"])
-# def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(get_db)):
-#     print(user_id)
-#     db_user = crud.get_user(db, user_id=user_id)
-#     if not db_user:
-#         raise HTTPException(status_code=400, detail="User ID not found")
-#     try:
-#         ret = crud.update_user(db=db, db_user=db_user, userdata=user)
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     return ret
-
-
-# @app.get("/users/", response_model=list[schemas.User], tags=["Users"])
-# def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-#     users = crud.get_users(db, skip=skip, limit=limit)
-#     return users
-
-
-# @app.get("/users/{user_id}", response_model=schemas.User, tags=["Users"])
-# def read_user(user_id: int, db: Session = Depends(get_db)):
-#     db_user = crud.get_user(db, user_id=user_id)
-#     if db_user is None:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return db_user
 
 
 # @app.get("/model_image")
