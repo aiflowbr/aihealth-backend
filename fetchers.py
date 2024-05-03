@@ -116,7 +116,8 @@ async def fetch_node(new_node):
                     datasets.append(nobj)
                 next_last_data.append(key_last_check)
         sorted_data = sorted(datasets, key=sort_key, reverse=True)
-        await send_to_all({"new_data": {"node_id": new_node.id, "data": sorted_data}})
+        if len(sorted_data) > 0:
+            await send_to_all({"new_data": {"node_id": new_node.id, "data": sorted_data}})
 
     last_data[new_node.id] = next_last_data
     # notify state changed

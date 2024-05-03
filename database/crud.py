@@ -1,8 +1,7 @@
-import hashlib
 from sqlalchemy.orm import Session
 from . import models, schemas
 
-# print(list(schemas.NodeStatus.model_fields.keys()))
+from config.security import hash_password
 
 
 def get_user(db: Session, user_id: int):
@@ -18,9 +17,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
 
 
 def create_user(db: Session, user: schemas.UserCreate):
-    hash_object = hashlib.sha256(user.password.encode())
-    hex_hash = hash_object.hexdigest()
-    db_user = models.User(username=user.username, hashed_password=hex_hash)
+    db_user = models.User(username=user.username, hashed_password=hash_password(user.password))
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -29,11 +26,9 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def update_user(db: Session, db_user: models.User, userdata: schemas.UserUpdate):
     # old pwd
-    old_hash_object = hashlib.sha256(userdata.old_password.encode())
-    old_hex_hash = old_hash_object.hexdigest()
+    old_hex_hash = hash_password(userdata.old_password)
     if db_user.hashed_password == old_hex_hash:
-        hash_object = hashlib.sha256(userdata.password.encode())
-        hex_hash = hash_object.hexdigest()
+        hex_hash = hash_password(userdata.password)
         print(db_user, userdata)
         db_user.hashed_password = hex_hash
         # db.add(db_user)
