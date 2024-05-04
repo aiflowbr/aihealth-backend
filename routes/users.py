@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import Depends, APIRouter, HTTPException, status
 from sqlalchemy.orm import Session
 from database import crud, schemas
@@ -9,7 +10,14 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from config.security import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password
+from config.security import (
+    OAUTH2_SCHEME,
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    verify_password,
+)
+
 router = APIRouter()
 
 
@@ -34,7 +42,9 @@ def create_access_token(data: dict, expires_delta: timedelta):
 
 # Token route
 @router.post("/users/authenticate", tags=["Users"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -50,7 +60,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @router.post("/users/", response_model=schemas.User, tags=["Users"])
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user: schemas.UserCreate,
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db: Session = Depends(get_db),
+):
+    print(token)
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -59,7 +74,6 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.put("/users/{user_id}", response_model=schemas.User, tags=["Users"])
 def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(get_db)):
-    print(user_id)
     db_user = crud.get_user(db, user_id=user_id)
     if not db_user:
         raise HTTPException(status_code=400, detail="User ID not found")
@@ -82,3 +96,15 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+
+@router.delete("/users/{user_id}", response_model=schemas.User, tags=["Users"])
+def delete_setting(
+    id: int,
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db: Session = Depends(get_db),
+):
+    db_user = crud.get_user(db, user_id=id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return crud.delete_user(db, db_user)

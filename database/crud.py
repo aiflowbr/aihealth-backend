@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 
-from config.security import hash_password
+from config.security import hash_password, verify_password
 
 
 def get_user(db: Session, user_id: int):
@@ -17,7 +17,9 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
 
 
 def create_user(db: Session, user: schemas.UserCreate):
-    db_user = models.User(username=user.username, hashed_password=hash_password(user.password))
+    db_user = models.User(
+        username=user.username, hashed_password=hash_password(user.password)
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -26,16 +28,20 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def update_user(db: Session, db_user: models.User, userdata: schemas.UserUpdate):
     # old pwd
-    old_hex_hash = hash_password(userdata.old_password)
-    if db_user.hashed_password == old_hex_hash:
+    if verify_password(userdata.old_password, db_user.hashed_password):
         hex_hash = hash_password(userdata.password)
-        print(db_user, userdata)
         db_user.hashed_password = hex_hash
         # db.add(db_user)
         db.commit()
         db.refresh(db_user)
     else:
         raise Exception("Wrong old password")
+    return db_user
+
+
+def delete_user(db: Session, db_user: models.User):
+    db.delete(db_user)
+    db.commit()
     return db_user
 
 
@@ -60,12 +66,19 @@ def get_nodes_all(db: Session):
 
 
 def get_nodes_all_status(db: Session):
-    nodes_dict = [{k: getattr(n, k) for k in list(schemas.NodeStatus.model_fields.keys())} for n in get_nodes_all(db)]
+    nodes_dict = [
+        {k: getattr(n, k) for k in list(schemas.NodeStatus.model_fields.keys())}
+        for n in get_nodes_all(db)
+    ]
     return nodes_dict
 
 
 def get_node_by_host_port(db: Session, address: str, port: int):
-    return db.query(models.Node).filter(models.Node.address == address, models.Node.port == port).first()
+    return (
+        db.query(models.Node)
+        .filter(models.Node.address == address, models.Node.port == port)
+        .first()
+    )
 
 
 def create_node(db: Session, node: schemas.NodeBase):
@@ -97,10 +110,12 @@ def update_node(db: Session, db_node: models.Node, userdata: schemas.NodeBase):
     db.refresh(db_node)
     return db_node
 
+
 def delete_node(db: Session, db_node: models.Node):
     db.delete(db_node)
     db.commit()
     return db_node
+
 
 #########
 # settings
@@ -114,22 +129,20 @@ def get_setting(db: Session, id: int):
 
 
 def get_setting_by_key(db: Session, key: str):
-    return (
-        db.query(models.Settings)
-        .filter(models.Settings.key == key)
-        .first()
-    )
+    return db.query(models.Settings).filter(models.Settings.key == key).first()
 
 
 def create_setting(db: Session, setting: schemas.SettingsBase):
-    db_setting = models.Settings(key = setting.key, value = setting.value)
+    db_setting = models.Settings(key=setting.key, value=setting.value)
     db.add(db_setting)
     db.commit()
     db.refresh(db_setting)
     return db_setting
 
 
-def update_setting(db: Session, db_setting: models.Settings, userdata: schemas.SettingsBase):
+def update_setting(
+    db: Session, db_setting: models.Settings, userdata: schemas.SettingsBase
+):
     db_setting.key = userdata.key
     db_setting.value = userdata.value
     db.commit()
