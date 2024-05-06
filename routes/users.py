@@ -41,7 +41,7 @@ def create_access_token(data: dict, expires_delta: timedelta):
 
 
 # Token route
-@router.post("/users/authenticate", tags=["Users"])
+@router.post("/authenticate", tags=["Users"])
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
@@ -59,7 +59,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/users/", response_model=schemas.User, tags=["Users"])
+@router.post("", response_model=schemas.User, tags=["Users"])
 def create_user(
     user: schemas.UserCreate,
     token: Annotated[str, Depends(OAUTH2_SCHEME)],
@@ -72,9 +72,12 @@ def create_user(
     return crud.create_user(db=db, user=user)
 
 
-@router.put("/users/{user_id}", response_model=schemas.User, tags=["Users"])
-def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(get_db)):
+@router.put("/{user_id}", response_model=schemas.User, tags=["Users"])
+def update_user(user_id: int, user: schemas.UserUpdate,
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db: Session = Depends(get_db)):
     db_user = crud.get_user(db, user_id=user_id)
+    print(token)
     if not db_user:
         raise HTTPException(status_code=400, detail="User ID not found")
     try:
@@ -84,21 +87,29 @@ def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(ge
     return ret
 
 
-@router.get("/users/", response_model=list[schemas.User], tags=["Users"])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("", response_model=list[schemas.User], tags=["Users"])
+def read_users(
+        token: Annotated[str, Depends(OAUTH2_SCHEME)],
+        skip: int = 0,
+        limit: int = 100,
+        db: Session = Depends(get_db),
+    ):
     users = crud.get_users(db, skip=skip, limit=limit)
     return users
 
 
-@router.get("/users/{user_id}", response_model=schemas.User, tags=["Users"])
-def read_user(user_id: int, db: Session = Depends(get_db)):
+@router.get("/{user_id}", response_model=schemas.User, tags=["Users"])
+def read_user(
+    user_id: int,
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db: Session = Depends(get_db)):
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
 
-@router.delete("/users/{user_id}", response_model=schemas.User, tags=["Users"])
+@router.delete("/{user_id}", response_model=schemas.User, tags=["Users"])
 def delete_setting(
     id: int,
     token: Annotated[str, Depends(OAUTH2_SCHEME)],

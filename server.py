@@ -11,9 +11,9 @@ from routes.inputs import router as inputs_routes
 from routes.settings import router as settings_routes
 from routes.info import router as info_router
 from routes.users import router as users_router
-from fetchers import fetch_node, nodes_fetcher
-from seeds import do_seeds
+from routes.fetchers import router as fetchers_router
 from ws import ws_clients
+from config.initializing import initialize_fastapi
 
 ## DICOM
 from dicom import listener
@@ -21,49 +21,7 @@ from dicom import listener
 # DICOM server listener
 listener.start_listener()
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Initializing...")
-    do_seeds()
-    db_nodes = get_nodes_all(SessionLocal())
-    for node in db_nodes:
-        if node.fetch_interval_type == "s":
-            nodes_fetcher.schedule(
-                f"{node.address}:{node.port}", node, fetch_node, sec=node.fetch_interval
-            )
-        else:
-            nodes_fetcher.schedule(
-                f"{node.address}:{node.port}", node, fetch_node, min=node.fetch_interval
-            )
-    yield
-    print("Finishing...")
-    nodes_fetcher.stop_all()
-
-
-app = FastAPI(lifespan=lifespan)
-
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-async def startup_event_handler():
-    print("Backend STARTED")
-
-
-async def shutdown_event_handler():
-    print("Backend FINISHED")
-
-
-app.add_event_handler("startup", startup_event_handler)
-app.add_event_handler("shutdown", shutdown_event_handler)
+app = initialize_fastapi()
 
 
 ########### ROUTES
@@ -71,21 +29,12 @@ app.add_event_handler("shutdown", shutdown_event_handler)
 Base.metadata.create_all(bind=engine)
 
 
-# @app.get("/", tags=["Info"])
-# def info():
-#     return {"appname": "AIHEALTH", "version": "1.0"}
-
-app.include_router(info_router)
-
-@app.get("/fetchers", tags=["Fetchers"])
-def schedules():
-    return nodes_fetcher.list()
-
-
-app.include_router(nodes_routes)
-app.include_router(inputs_routes)
-app.include_router(settings_routes)
-app.include_router(users_router)
+app.include_router(router=info_router)
+app.include_router(prefix="/fetchers", router=fetchers_router)
+app.include_router(prefix="/nodes", router=nodes_routes, )
+app.include_router(prefix="/inputs", router=inputs_routes)
+app.include_router(prefix="/settings", router=settings_routes)
+app.include_router(prefix="/users", router=users_router)
 
 
 # @app.get("/inputs", tags=["Inputs list"])

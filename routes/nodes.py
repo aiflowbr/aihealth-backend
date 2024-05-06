@@ -5,7 +5,7 @@ from database.database import get_db
 
 
 router = APIRouter()
-url_base = "/nodes"
+url_base = ""
 
 
 from fetchers import fetch_node, nodes_fetcher
@@ -24,7 +24,7 @@ def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
     return new_node
 
 
-@router.put("/nodes/{id}", response_model=schemas.Node, tags=["Nodes"])
+@router.put("/{id}", response_model=schemas.Node, tags=["Nodes"])
 def update_node(id: int, node: schemas.NodeBase, db: Session = Depends(get_db)):
     db_node = crud.get_node(db, id=id)
     if not db_node:

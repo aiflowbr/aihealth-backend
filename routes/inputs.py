@@ -5,7 +5,7 @@ from database import crud, schemas
 from database.database import get_db
 
 router = APIRouter()
-url_base = "/inputs"
+url_base = ""
 url_base_id = f"{url_base}/{{id}}"
 
 from fetchers import fetch_node, nodes_fetcher

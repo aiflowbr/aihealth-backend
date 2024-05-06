@@ -5,8 +5,9 @@ from database import crud, schemas
 from database.database import get_db
 
 router = APIRouter()
-url_base = "/settings"
-url_base_id = f"{url_base}/{{id}}"
+url_base = ""
+# url_base_id = f"{url_base}/{{id}}"
+url_base_id = "/{id}"
 
 
 @router.post(url_base, response_model=schemas.Settings, tags=["Settings"])
