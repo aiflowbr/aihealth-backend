@@ -4,9 +4,13 @@ from database.database import Base
 from sqlalchemy_serializer import SerializerMixin
 from fetchers import nodes_fetcher
 
+
 class User(Base, SerializerMixin):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
+    name = Column(String)
+    mail = Column(String)
+    photo = Column(String)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     # is_ad_auth = Column(Boolean, default=True)

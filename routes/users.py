@@ -41,8 +41,9 @@ def create_access_token(data: dict, expires_delta: timedelta):
 
 
 # Token route
-@router.post("/authenticate", tags=["Users"])
+@router.post("/authenticate", response_model=schemas.TokenBase, tags=["Users"])
 async def login_for_access_token(
+
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
     user = authenticate_user(db, form_data.username, form_data.password)
@@ -60,16 +61,32 @@ async def login_for_access_token(
 
 
 # Token decode
-@router.post("/token_decode", response_model=schemas.TokenDecoded, tags=["Users"])
-async def token_decode(
+@router.get("/logged_user_info", response_model=schemas.UserBase, tags=["Users"])
+async def logged_user_info(
     token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db: Session = Depends(get_db)
 ):
-    return {
-        "name": "Admin",
-        "username": "admin",
-        "mail": "admin@admin.net",
-        "photo": "https://cdn3d.iconscout.com/3d/premium/thumb/doctor-avatar-10107433-8179550.png?f=png",
-    }
+    try:
+        decoded = jwt.decode(token, SECRET_KEY)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return crud.get_user_by_username(db, decoded["sub"])
+
+
+# Token decode
+@router.get("/renew", response_model=schemas.TokenBase, tags=["Users"])
+async def renew_token(
+    token: Annotated[str, Depends(OAUTH2_SCHEME)]
+):
+    try:
+        decoded = jwt.decode(token, SECRET_KEY)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": decoded["sub"]}, expires_delta=access_token_expires
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("", response_model=schemas.User, tags=["Users"])
@@ -81,7 +98,8 @@ def create_user(
     print(token)
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(
+            status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
 
 
