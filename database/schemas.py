@@ -19,6 +19,17 @@ class Audit(AuditBase):
         from_attributes = True
 
 
+class TokenDecode(BaseModel):
+    token: str
+
+
+class TokenDecoded(BaseModel):
+    name: str
+    username: str
+    mail: str
+    photo: str
+
+
 class UserBase(BaseModel):
     username: str
 

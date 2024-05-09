@@ -59,6 +59,19 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+# Token decode
+@router.post("/token_decode", response_model=schemas.TokenDecoded, tags=["Users"])
+async def token_decode(
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+):
+    return {
+        "name": "Admin",
+        "username": "admin",
+        "mail": "admin@admin.net",
+        "photo": "https://cdn3d.iconscout.com/3d/premium/thumb/doctor-avatar-10107433-8179550.png?f=png",
+    }
+
+
 @router.post("", response_model=schemas.User, tags=["Users"])
 def create_user(
     user: schemas.UserCreate,
@@ -73,9 +86,12 @@ def create_user(
 
 
 @router.put("/{user_id}", response_model=schemas.User, tags=["Users"])
-def update_user(user_id: int, user: schemas.UserUpdate,
+def update_user(
+    user_id: int,
+    user: schemas.UserUpdate,
     token: Annotated[str, Depends(OAUTH2_SCHEME)],
-    db: Session = Depends(get_db)):
+    db: Session = Depends(get_db),
+):
     db_user = crud.get_user(db, user_id=user_id)
     print(token)
     if not db_user:
@@ -89,11 +105,11 @@ def update_user(user_id: int, user: schemas.UserUpdate,
 
 @router.get("", response_model=list[schemas.User], tags=["Users"])
 def read_users(
-        token: Annotated[str, Depends(OAUTH2_SCHEME)],
-        skip: int = 0,
-        limit: int = 100,
-        db: Session = Depends(get_db),
-    ):
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
     users = crud.get_users(db, skip=skip, limit=limit)
     return users
 
@@ -102,7 +118,8 @@ def read_users(
 def read_user(
     user_id: int,
     token: Annotated[str, Depends(OAUTH2_SCHEME)],
-    db: Session = Depends(get_db)):
+    db: Session = Depends(get_db),
+):
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
