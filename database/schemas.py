@@ -21,9 +21,9 @@ class Audit(AuditBase):
 
 class UserBase(BaseModel):
     username: str
-    name: str
-    mail: str
-    photo: str
+    name: str | None = None
+    mail: str | None = None
+    photo: str | None = None
 
 
 class TokenBase(BaseModel):
