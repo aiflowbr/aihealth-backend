@@ -28,7 +28,7 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def update_user(db: Session, db_user: models.User, userdata: schemas.UserUpdate):
     # old pwd
-    if verify_password(userdata.old_password, db_user.hashed_password):
+    if (db_user.hashed_password is None or db_user.hashed_password == "") or verify_password(userdata.old_password, db_user.hashed_password):
         hex_hash = hash_password(userdata.password)
         db_user.hashed_password = hex_hash
         # db.add(db_user)
@@ -67,7 +67,8 @@ def get_nodes_all(db: Session):
 
 def get_nodes_all_status(db: Session):
     nodes_dict = [
-        {k: getattr(n, k) for k in list(schemas.NodeStatus.model_fields.keys())}
+        {k: getattr(n, k)
+         for k in list(schemas.NodeStatus.model_fields.keys())}
         for n in get_nodes_all(db)
     ]
     return nodes_dict

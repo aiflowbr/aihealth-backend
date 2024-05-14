@@ -24,7 +24,8 @@ router = APIRouter()
 # Function to authenticate user
 def authenticate_user(db, username: str, password: str):
     user = crud.get_user_by_username(db, username)
-    if not user:
+    print(user)
+    if not user or user.hashed_password == '':
         return False
     if not verify_password(password, user.hashed_password):
         return False
@@ -101,6 +102,23 @@ def create_user(
         raise HTTPException(
             status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
+
+
+@router.put("/update_logged_user_password", response_model=schemas.User, tags=["Users"])
+def update_logged_user_password(
+    user: schemas.UserUpdate,
+    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db: Session = Depends(get_db),
+):
+    decoded_token = jwt.decode(token, SECRET_KEY)
+    db_user = crud.get_user_by_username(db, decoded_token["sub"])
+    if not db_user:
+        raise HTTPException(status_code=400, detail="User ID not found")
+    try:
+        ret = crud.update_user(db=db, db_user=db_user, userdata=user)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return ret
 
 
 @router.put("/{user_id}", response_model=schemas.User, tags=["Users"])
