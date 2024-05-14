@@ -73,3 +73,7 @@ class SettingsBase(BaseModel):
 
 class Settings(SettingsBase):
     id: int
+
+
+class InputBase(BaseModel):
+    modality: str
