@@ -67,3 +67,11 @@ class Inputs(Base, SerializerMixin):
     port = Column(Integer, index=True)
     # owner_id = Column(Integer, ForeignKey("users.id"))
     # owner = relationship("User", back_populates="items")
+
+
+# class NeuralNetworks(Base, SerializerMixin):
+#     __tablename__ = "neural_networks"
+
+#     id = Column(Integer, primary_key=True)
+#     model = Column(String, index=True)
+#     modality = Column(String, index=True)
