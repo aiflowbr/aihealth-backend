@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 
 class AuditBase(BaseModel):
@@ -77,3 +78,27 @@ class Settings(SettingsBase):
 
 class InputBase(BaseModel):
     modality: str
+
+
+class NeuralNetworkBase(BaseModel):
+    name: str
+    description: str | None = None
+    architecture: str
+    modality: str
+    upload_path: str
+    date_created: datetime
+    is_active: bool
+
+
+class NeuralNetworkUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    architecture: Optional[str] = None
+    modality: Optional[str] = None
+    upload_path: Optional[str] = None
+    date_created: Optional[datetime] = None
+    is_active: Optional[bool] = None
+
+
+class NeuralNetwork(NeuralNetworkBase):
+    id: int

@@ -1,8 +1,9 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
 from database.database import Base
 from sqlalchemy_serializer import SerializerMixin
 from fetchers import nodes_fetcher
+from datetime import datetime, UTC
 
 
 class User(Base, SerializerMixin):
@@ -69,9 +70,33 @@ class Inputs(Base, SerializerMixin):
     # owner = relationship("User", back_populates="items")
 
 
-# class NeuralNetworks(Base, SerializerMixin):
-#     __tablename__ = "neural_networks"
+class NeuralNetworks(Base, SerializerMixin):
+    __tablename__ = "neural_networks"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    architecture = Column(String, nullable=False)  # e.g., VGG16, ResNet50
+    modality = Column(String, index=True)  # e.g., DX, CT.
+    upload_path = Column(
+        String, nullable=False
+    )  # Path to the uploaded TensorFlow model file
+    date_created = Column(DateTime, default=datetime.now(UTC))
+    is_active = Column(Boolean, default=True)
+
+    # def __init__(self, name, architecture, upload_path, description=None):
+    #     self.name = name
+    #     self.architecture = architecture
+    #     self.upload_path = upload_path
+    #     self.description = description
+
+
+# # Optional: Associating NeuralNetwork with an existing Workflow or Input
+# class Workflow(Base, SerializerMixin):
+#     __tablename__ = "workflows"
 
 #     id = Column(Integer, primary_key=True)
-#     model = Column(String, index=True)
-#     modality = Column(String, index=True)
+#     name = Column(String, nullable=False)
+#     neural_network_id = Column(Integer, ForeignKey('neural_networks.id'))
+#     neural_network = relationship("NeuralNetwork", back_populates="workflows")
+
+# NeuralNetwork.workflows = relationship("Workflow", order_by=Workflow.id, back_populates="neural_network")

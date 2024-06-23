@@ -12,6 +12,7 @@ from routes.settings import router as settings_routes
 from routes.info import router as info_router
 from routes.users import router as users_router
 from routes.fetchers import router as fetchers_router
+from routes.neural_networks import router as neural_networks_router
 from ws import ws_clients
 from config.initializing import initialize_fastapi
 
@@ -31,10 +32,14 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(router=info_router)
 app.include_router(prefix="/fetchers", router=fetchers_router)
-app.include_router(prefix="/nodes", router=nodes_routes, )
+app.include_router(
+    prefix="/nodes",
+    router=nodes_routes,
+)
 app.include_router(prefix="/inputs", router=inputs_routes)
 app.include_router(prefix="/settings", router=settings_routes)
 app.include_router(prefix="/users", router=users_router)
+app.include_router(prefix="/neural_networks", router=neural_networks_router)
 
 
 # @app.get("/inputs", tags=["Inputs list"])

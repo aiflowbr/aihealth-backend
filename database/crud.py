@@ -28,7 +28,9 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def update_user(db: Session, db_user: models.User, userdata: schemas.UserUpdate):
     # old pwd
-    if (db_user.hashed_password is None or db_user.hashed_password == "") or verify_password(userdata.old_password, db_user.hashed_password):
+    if (
+        db_user.hashed_password is None or db_user.hashed_password == ""
+    ) or verify_password(userdata.old_password, db_user.hashed_password):
         hex_hash = hash_password(userdata.password)
         db_user.hashed_password = hex_hash
         # db.add(db_user)
@@ -67,8 +69,7 @@ def get_nodes_all(db: Session):
 
 def get_nodes_all_status(db: Session):
     nodes_dict = [
-        {k: getattr(n, k)
-         for k in list(schemas.NodeStatus.model_fields.keys())}
+        {k: getattr(n, k) for k in list(schemas.NodeStatus.model_fields.keys())}
         for n in get_nodes_all(db)
     ]
     return nodes_dict
@@ -155,3 +156,49 @@ def delete_setting(db: Session, db_setting: models.Settings):
     db.delete(db_setting)
     db.commit()
     return db_setting
+
+
+#########
+# neural networks
+def get_neural_networks(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.NeuralNetworks).offset(skip).limit(limit).all()
+
+
+def get_neural_network(db: Session, id: int):
+    obj = db.query(models.NeuralNetworks).filter(models.NeuralNetworks.id == id).first()
+    return obj
+
+
+def get_neural_network_by_name(db: Session, name: str):
+    return (
+        db.query(models.NeuralNetworks)
+        .filter(models.NeuralNetworks.name == name)
+        .first()
+    )
+
+
+def create_neural_network(db: Session, neural_network: schemas.NeuralNetworkBase):
+    db_neural_network = models.NeuralNetworks(**neural_network.model_dump())
+    db.add(db_neural_network)
+    db.commit()
+    db.refresh(db_neural_network)
+    return db_neural_network
+
+
+def update_neural_network(
+    db: Session,
+    db_neural_network: models.NeuralNetworks,
+    userdata: schemas.NeuralNetworkUpdate,
+):
+    update_data = userdata.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_neural_network, key, value)
+    db.commit()
+    db.refresh(db_neural_network)
+    return db_neural_network
+
+
+def delete_neural_network(db: Session, db_neural_network: models.NeuralNetworks):
+    db.delete(db_neural_network)
+    db.commit()
+    return db_neural_network
