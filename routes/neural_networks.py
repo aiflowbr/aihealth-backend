@@ -1,8 +1,10 @@
-from fastapi import Depends, APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from database import crud, schemas
 from database.database import get_db
+
+UPLOAD_DIRECTORY = "./uploads"
 
 router = APIRouter()
 url_base = ""
@@ -12,7 +14,9 @@ url_base_id = "/{id}"
 
 @router.post(url_base, response_model=schemas.NeuralNetwork, tags=["NeuralNetworks"])
 def create_neural_network(
-    neural_network: schemas.NeuralNetworkBase, db: Session = Depends(get_db)
+    neural_network: schemas.NeuralNetworkBase,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
 ):
     db_neural_network = crud.get_neural_network_by_name(db, name=neural_network.name)
     if db_neural_network:

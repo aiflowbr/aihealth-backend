@@ -1,10 +1,9 @@
-from contextlib import asynccontextmanager
+# from contextlib import asynccontextmanager
 
 # import os
-from fastapi import Depends, FastAPI, WebSocket  # , HTTPException, Response
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import WebSocket  # , HTTPException, Response, Depends, FastAPI,
 
-from database.crud import get_nodes_all, get_nodes_all_status
+from database.crud import get_nodes_all_status  # get_nodes_all,
 from database.database import Base, engine, SessionLocal  # , get_db
 from routes.nodes import router as nodes_routes
 from routes.inputs import router as inputs_routes
@@ -16,7 +15,7 @@ from routes.neural_networks import router as neural_networks_router
 from ws import ws_clients
 from config.initializing import initialize_fastapi
 
-## DICOM
+# DICOM
 from dicom import listener
 
 # DICOM server listener
@@ -25,7 +24,7 @@ listener.start_listener()
 app = initialize_fastapi()
 
 
-########### ROUTES
+# ..... ROUTES
 # cria banco de dados
 Base.metadata.create_all(bind=engine)
 
