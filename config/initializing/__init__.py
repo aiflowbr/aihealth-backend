@@ -7,6 +7,7 @@ from database.database import SessionLocal
 from fetchers import fetch_node, nodes_fetcher
 from seeds import do_seeds
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Initializing...")
@@ -29,8 +30,10 @@ async def lifespan(app: FastAPI):
 async def startup_event_handler():
     print("Backend STARTED")
 
+
 async def shutdown_event_handler():
     print("Backend FINISHED")
+
 
 def initialize_fastapi():
     app = FastAPI(
@@ -38,10 +41,15 @@ def initialize_fastapi():
         swagger_ui_parameters={
             "persistAuthorization": True,
             "docExpansion": None,
-        })
+        },
+    )
     origins = ["*"]
-    app.add_middleware(CORSMiddleware, allow_origins=origins,
-        allow_credentials=True, allow_methods=origins, allow_headers=origins,
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=origins,
+        allow_headers=origins,
     )
     app.add_event_handler("startup", startup_event_handler)
     app.add_event_handler("shutdown", shutdown_event_handler)
